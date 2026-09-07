@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>لوحة التحكم - تعرّف على صديق</title>
+<style>
+  :root{
+    --primary:#6c5ce7;
+    --primary-dark:#4834d4;
+    --danger:#e74c3c;
+    --success:#2ecc71;
+    --text-dark:#2d3436;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; font-family:'Tahoma','Segoe UI',sans-serif;}
+  html,body{ min-height:100vh; background:#1a1a2e; direction:rtl; }
+  #gate{
+    min-height:100vh;
+    display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .gate-card{
+    background:#fff; border-radius:20px; padding:32px 24px;
+    width:100%; max-width:360px; box-shadow:0 15px 35px rgba(0,0,0,0.3);
+    text-align:center;
+  }
+  .gate-card h1{color:var(--primary-dark); margin-bottom:8px; font-size:22px;}
+  .gate-card p{color:#636e72; font-size:13px; margin-bottom:20px;}
+  .gate-card input{
+    width:100%; padding:13px 14px; border-radius:12px;
+    border:2px solid #dfe6e9; font-size:15px; outline:none; margin-bottom:12px;
+  }
+  .gate-card button{
+    width:100%; padding:13px; border:none; border-radius:12px;
+    background:var(--primary); color:#fff; font-size:15px; font-weight:bold; cursor:pointer;
+  }
+  .gate-error{ color:var(--danger); font-size:13px; margin-top:10px; display:none; }
+
+  #app{ display:none; max-width:900px; margin:0 auto; padding:16px; }
+  .header{
+    background:rgba(255,255,255,0.95); border-radius:16px; padding:16px 18px;
+    margin-bottom:16px; display:flex; justify-content:space-between; align-items:center;
+  }
+  .header h2{ color:var(--primary-dark); font-size:18px; }
+  .header button{
+    background:var(--danger); color:#fff; border:none; padding:8px 14px;
+    border-radius:10px; font-size:13px; cursor:pointer;
+  }
+
+  .tabs{ display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap; }
+  .tab-btn{
+    background:rgba(255,255,255,0.85); border:none; padding:10px 16px;
+    border-radius:12px; font-size:13px; font-weight:bold; cursor:pointer; color:var(--text-dark);
+  }
+  .tab-btn.active{ background:var(--primary); color:#fff; }
+
+  .panel{
+    background:#fff; border-radius:16px; padding:18px; margin-bottom:16px; display:none;
+  }
+  .panel.active{ display:block; }
+  .panel h4{ color:var(--primary-dark); margin-bottom:14px; font-size:15px; }
+
+  .row{ display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap; }
+  .row input, .row select{
+    flex:1; min-width:140px; padding:11px 12px; border-radius:10px;
+    border:2px solid #dfe6e9; font-size:14px; outline:none;
+  }
+  .row button{
+    padding:11px 16px; border:none; border-radius:10px; background:var(--primary);
+    color:#fff; font-weight:bold; font-size:13px; cursor:pointer; white-space:nowrap;
+  }
+  .row button.danger{ background:var(--danger); }
+  .row button.success{ background:var(--success); }
+
+  .user-card{ background:#f8f9fc; border-radius:14px; padding:16px; margin-bottom:16px; }
+  .user-card .uid{ color:#636e72; font-size:13px; }
+  .user-card .stats{ font-size:14px; line-height:1.9; margin-top:8px; }
+
+  .stats-grid{ display:grid; grid-template-columns:repeat(2,1fr); gap:10px; }
+  .stat-box{ background:#f8f9fc; border-radius:14px; padding:16px 8px; text-align:center; }
+  .stat-box .num{ font-size:22px; font-weight:bold; color:var(--primary-dark); }
+  .stat-box .label{ font-size:12px; color:#636e72; margin-top:4px; }
+
+  .msg-card{
+    background:#f8f9fc; border-radius:12px; padding:12px; margin-bottom:10px; font-size:13px;
+  }
+  .msg-card textarea{
+    width:100%; margin-top:8px; padding:10px; border-radius:10px;
+    border:2px solid #dfe6e9; min-height:60px; font-family:inherit; font-size:13px;
+  }
+  .msg-card button{
+    margin-top:8px; padding:9px 14px; border:none; border-radius:10px;
+    background:var(--primary); color:#fff; font-size:12px; cursor:pointer;
+  }
+  .msg-card button.danger{ background:var(--danger); }
+  .msg-card .quick-actions{ display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+  .vip-code-box{ text-align:center; margin-bottom:16px; }
+  .vip-code-box .code{ font-size:28px; font-weight:bold; color:var(--primary-dark); letter-spacing:4px; direction:ltr; }
+  .vip-code-box .timer{ font-size:12px; color:#b2bec3; margin-top:6px; }
+  .empty, .loading, .error{ text-align:center; color:#b2bec3; padding:20px; font-size:13px; }
+  .error{ color:var(--danger); }
+  .hint{ font-size:11px; color:#b2bec3; margin-top:-6px; margin-bottom:12px; }
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="gate-card">
+    <h1>🔐 لوحة التحكم</h1>
+    <p>هذه اللوحة خاصة بمالك الموقع فقط</p>
+    <input type="password" id="admin-password-input" placeholder="كلمة المرور">
+    <button onclick="checkAdminPassword()">دخول</button>
+    <div class="gate-error" id="admin-gate-error">كلمة المرور غير صحيحة</div>
+  </div>
+</div>
+
+<div id="app">
+  <div class="header">
+    <h2>🛠️ لوحة تحكم "تعرّف على صديق"</h2>
+    <button onclick="location.reload()">خروج</button>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn active" id="tabbtn-overview" onclick="showTab('overview')">📊 نظرة عامة</button>
+    <button class="tab-btn" id="tabbtn-users" onclick="showTab('users')">👤 المستخدمون</button>
+    <button class="tab-btn" id="tabbtn-createuser" onclick="showTab('createuser')">➕ إنشاء حساب</button>
+    <button class="tab-btn" id="tabbtn-support" onclick="showTab('support')">🛟 الدعم</button>
+    <button class="tab-btn" id="tabbtn-reports" onclick="showTab('reports')">🚫 بلاغات الألفاظ</button>
+    <button class="tab-btn" id="tabbtn-broadcast" onclick="showTab('broadcast')">🔔 تحديث للجميع</button>
+  </div>
+
+  <!-- Overview -->
+  <div class="panel active" id="tab-overview">
+    <h4>نظرة عامة على الموقع</h4>
+    <div id="overview-content" class="loading">جاري التحميل...</div>
+  </div>
+
+  <!-- Users -->
+  <div class="panel" id="tab-users">
+    <h4>البحث عن مستخدم</h4>
+    <div class="row">
+      <input type="text" id="admin-search-id" placeholder="ID- أو رقم المستخدم">
+      <button onclick="adminSearchUser()">🔎 بحث</button>
+    </div>
+    <div id="admin-user-result"></div>
+
+    <div id="admin-actions" style="display:none; margin-top:16px;">
+      <h4>إجراءات على هذا المستخدم</h4>
+
+      <div class="row">
+        <input type="number" id="admin-likes-amount" placeholder="عدد اللايكات" value="10">
+        <button onclick="adminAddLikes()">❤️ إضافة لايكات</button>
+      </div>
+      <div class="row">
+        <input type="number" id="admin-views-amount" placeholder="عدد المشاهدات" value="10">
+        <button onclick="adminAddViews()">👁️ إضافة مشاهدات</button>
+      </div>
+      <div class="row">
+        <input type="number" id="admin-followers-amount" placeholder="عدد المتابعين" value="10" min="0">
+        <button onclick="adminAddFollowers()">👥 إضافة متابعين</button>
+        <button class="danger" onclick="adminRemoveFollowers()">➖ خصم متابعين</button>
+      </div>
+      <div class="hint">المتابعون هنا رقم إضافي يُضاف لعدد المتابعين الحقيقيين في الملف الشخصي. الخصم لا ينزل العدد الكلي عن صفر</div>
+
+      <div class="row">
+        <select id="admin-badge-select"></select>
+        <button onclick="adminGiveBadge()">🛡️ منح وسام</button>
+      </div>
+
+      <div class="row">
+        <button onclick="adminToggleVerified()">✔️ تفعيل / إلغاء علامة التوثيق</button>
+      </div>
+
+      <div class="row">
+        <input type="text" id="admin-ban-reason" placeholder="سبب الحظر (اختياري)">
+        <button class="danger" onclick="adminBanUser()">⛔ حظر المستخدم</button>
+        <button class="success" onclick="adminUnbanUser()">✅ فك الحظر</button>
+      </div>
+
+      <div class="row">
+        <button class="danger" onclick="adminDeleteUser()">🗑️ حذف الحساب نهائيًا</button>
+      </div>
+      <div class="hint">حذف الحساب إجراء نهائي ولا يمكن التراجع عنه</div>
+
+      <div class="row">
+        <input type="text" id="admin-new-password" placeholder="كلمة مرور جديدة للمستخدم">
+        <button onclick="adminResetPassword()">🔑 تغيير كلمة المرور</button>
+      </div>
+    </div>
+
+    <h4 style="margin-top:20px;">المستخدمون المحظورون حاليًا</h4>
+    <div id="admin-banned-list" class="loading">جاري التحميل...</div>
+  </div>
+
+  <!-- Create custom account -->
+  <div class="panel" id="tab-createuser">
+    <h4>➕ إنشاء حساب بـ ID على مزاجك</h4>
+    <p class="hint">اختار أي ID يعجبك (لازم يكون فاضي ومش مستخدم)، وأي اسم فاضي مش مأخوذ. بعد الإنشاء تقدر تظبطه أكتر (وسام/توثيق/متابعين) من تاب "المستخدمون" بنفس الـ ID.</p>
+    <div class="row">
+      <input type="text" id="cu-id" placeholder="ID (مثلاً: 77777 أو VIP1)">
+    </div>
+    <div class="row">
+      <input type="text" id="cu-username" placeholder="اسم المستخدم">
+    </div>
+    <div class="row">
+      <input type="email" id="cu-email" placeholder="البريد الإلكتروني (يُستخدم لتسجيل الدخول)">
+    </div>
+    <div class="row">
+      <input type="text" id="cu-password" placeholder="كلمة المرور" value="123456">
+    </div>
+    <div class="row">
+      <select id="cu-gender">
+        <option value="male">ذكر</option>
+        <option value="female">أنثى</option>
+      </select>
+      <label style="display:flex; align-items:center; gap:6px;">
+        <input type="checkbox" id="cu-verified"> علامة توثيق ✔️
+      </label>
+    </div>
+    <div class="row">
+      <select id="cu-badge-select"><option value="-1">بدون وسام</option></select>
+    </div>
+    <div class="row">
+      <input type="number" id="cu-bonus-followers" placeholder="متابعون إضافيون (اختياري)" value="0" min="0">
+    </div>
+    <div class="row">
+      <button onclick="adminCreateUser()">✅ إنشاء الحساب</button>
+    </div>
+    <div id="cu-result"></div>
+  </div>
+
+  <!-- Support -->
+  <div class="panel" id="tab-support">
+    <h4>رسائل الدعم من المستخدمين</h4>
+
+    <div class="user-card vip-code-box">
+      <div style="font-size:13px; color:#636e72; margin-bottom:6px;">🔐 كود VIP لدخول الغرف (يتجدد تلقائيًا كل ساعة)</div>
+      <div class="code" id="vip-code-display">—</div>
+      <div class="timer" id="vip-code-timer"></div>
+    </div>
+
+    <div class="user-card">
+      <h4>📢 إرسال رسالة من الدعم لجميع المستخدمين</h4>
+      <p class="hint">الرسالة دي هتظهر لكل شخص فاتح الموقع دلوقتي على شاشته. مختلفة عن الرد العادي على مستخدم واحد اللي بيبقى من غرفة الرسالة بتاعته تحت.</p>
+      <textarea id="support-broadcast-input" placeholder="اكتب رسالة الدعم اللي عاوز توصل للجميع..." style="width:100%; min-height:70px; padding:10px; border-radius:10px; border:2px solid #dfe6e9; font-family:inherit; font-size:14px;"></textarea>
+      <div class="row" style="margin-top:10px;">
+        <button onclick="sendSupportBroadcast()">📨 إرسال للجميع</button>
+      </div>
+      <div id="support-broadcast-status" class="hint"></div>
+    </div>
+
+    <div id="admin-support-list" class="loading">جاري التحميل...</div>
+  </div>
+
+  <!-- Profanity reports -->
+  <div class="panel" id="tab-reports">
+    <h4>بلاغات ألفاظ تلقائية</h4>
+    <p class="hint">الموقع بيراقب الرسائل تلقائيًا وبيبلّغك هنا لو فيه لفظ مسيء، مع اسم/ID المستخدم عشان تحظره بسهولة. الرسائل العادية مش بتتسجل هنا خالص.</p>
+    <div id="admin-reports-list" class="loading">جاري التحميل...</div>
+  </div>
+
+  <!-- Broadcast -->
+  <div class="panel" id="tab-broadcast">
+    <h4>إرسال رابط جديد لجميع المستخدمين</h4>
+    <p class="hint">عند الإرسال، سيظهر لكل من يفتح الموقع (حتى غير المسجلين) إشعار بالرابط الجديد مع الانتقال التلقائي إليه بعد ثوانٍ.</p>
+    <div class="row">
+      <input type="text" id="broadcast-url-input" placeholder="https://example.com">
+    </div>
+    <div class="row">
+      <input type="text" id="broadcast-msg-input" placeholder="رسالة توضيحية (اختياري)">
+    </div>
+    <div class="row">
+      <button onclick="sendBroadcast()">📨 إرسال للجميع</button>
+      <button class="danger" onclick="clearBroadcast()">🗑️ إلغاء التحديث الحالي</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// دالة مؤقتة (placeholder) لحد ما يخلص تحميل Firebase - تمنع ظهور "not defined"
+window.checkAdminPassword = function(){
+  alert('جاري تحميل الصفحة، حاول بعد ثانية...');
+};
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js";
+import {
+  getFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc,
+  collection, query, where, orderBy, limit, arrayUnion, increment,
+  serverTimestamp, Timestamp, getCountFromServer
+} from "https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js";
+
+/* ============================================================
+   IMPORTANT: نفس مشروع Firebase المستخدم في الموقع الأساسي
+   ============================================================ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCcvKpKMYiHcP5lEbf1ngMXzkRUkX5lAQE",
+  authDomain: "ahmed-50007.firebaseapp.com",
+  projectId: "ahmed-50007",
+  storageBucket: "ahmed-50007.firebasestorage.app",
+  messagingSenderId: "313890657476",
+  appId: "1:313890657476:web:cb19dc7cea3739d6952591",
+  measurementId: "G-W3YLHWBGGV"
+};
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+/* ============================================================
+   كلمة مرور اللوحة - غيّرها فورًا قبل الاستخدام الحقيقي
+   ============================================================ */
+const ADMIN_PASSWORD = "22334455";
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str == null ? '' : String(str);
+  return div.innerHTML;
+}
+
+window.checkAdminPassword = function(){
+  const val = document.getElementById('admin-password-input').value;
+  if(val === ADMIN_PASSWORD){
+    document.getElementById('gate').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    initAdmin();
+  } else {
+    document.getElementById('admin-gate-error').style.display = 'block';
+  }
+};
+
+const BADGE_PRESETS = [
+  { emoji: '🛡️', label: 'عضو مميز' },
+  { emoji: '👑', label: 'VIP' },
+  { emoji: '⭐', label: 'نجم المجتمع' },
+  { emoji: '🔥', label: 'الأكثر تفاعلاً' },
+  { emoji: '💎', label: 'عضو ألماسي' },
+  { emoji: '🏆', label: 'بطل الشهر' }
+];
+
+function populateBadgeSelect(){
+  const sel = document.getElementById('admin-badge-select');
+  sel.innerHTML = BADGE_PRESETS.map((b, i) => `<option value="${i}">${b.emoji} ${b.label}</option>`).join('');
+}
+
+function populateCreateUserBadgeSelect(){
+  const sel = document.getElementById('cu-badge-select');
+  sel.innerHTML = '<option value="-1">بدون وسام</option>' +
+    BADGE_PRESETS.map((b, i) => `<option value="${i}">${b.emoji} ${b.label}</option>`).join('');
+}
+
+function initAdmin(){
+  populateBadgeSelect();
+  window.showTab('overview');
+}
+
+/* ============================================================
+   Tabs
+   ============================================================ */
+window.showTab = function(tab){
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + tab).classList.add('active');
+  document.getElementById('tabbtn-' + tab).classList.add('active');
+  if(tab === 'overview') loadOverview();
+  if(tab === 'users') loadBannedUsers();
+  if(tab === 'createuser') populateCreateUserBadgeSelect();
+  if(tab === 'support'){ loadAdminSupportMessages(); startVipCodeWatcher(); }
+  if(tab === 'reports') loadProfanityReports();
+  if(tab === 'broadcast') loadCurrentBroadcast();
+};
+
+/* ============================================================
+   Overview
+   ============================================================ */
+async function loadOverview(){
+  const box = document.getElementById('overview-content');
+  box.innerHTML = '<div class="loading">جاري التحميل...</div>';
+  try{
+    const [usersCount, roomsCount, cinemasCount, onlineSnap] = await Promise.all([
+      getCountFromServer(collection(db, 'users')),
+      getCountFromServer(collection(db, 'rooms')),
+      getCountFromServer(collection(db, 'cinemas')),
+      getDocs(query(collection(db, 'users'), where('lastActive', '>=', Timestamp.fromMillis(Date.now() - 45000))))
+    ]);
+    box.innerHTML = `
+      <div class="stats-grid">
+        <div class="stat-box"><div class="num">${usersCount.data().count}</div><div class="label">👤 إجمالي المستخدمين</div></div>
+        <div class="stat-box"><div class="num">${onlineSnap.size}</div><div class="label">🟢 متصل الآن</div></div>
+        <div class="stat-box"><div class="num">${roomsCount.data().count}</div><div class="label">🗨️ غرف الدردشة</div></div>
+        <div class="stat-box"><div class="num">${cinemasCount.data().count}</div><div class="label">🎬 غرف السينما</div></div>
+      </div>
+    `;
+  }catch(err){
+    console.error(err);
+    box.innerHTML = '<div class="error">حدث خطأ أثناء التحميل</div>';
+  }
+}
+
+/* ============================================================
+   Users
+   ============================================================ */
+let currentAdminTargetId = null;
+
+window.adminSearchUser = async function(){
+  const raw = document.getElementById('admin-search-id').value.trim();
+  const box = document.getElementById('admin-user-result');
+  document.getElementById('admin-actions').style.display = 'none';
+  if(!raw){ box.innerHTML = '<div class="error">أدخل ID المستخدم</div>'; return; }
+  let id = raw.toUpperCase();
+  if(!id.startsWith('ID-')) id = 'ID-' + id;
+  box.innerHTML = '<div class="loading">جاري البحث...</div>';
+  try{
+    const snap = await getDoc(doc(db, 'users', id));
+    if(!snap.exists()){ box.innerHTML = '<div class="error">❌ المستخدم غير موجود</div>'; return; }
+    currentAdminTargetId = id;
+    renderAdminUserCard({ id: snap.id, ...snap.data() });
+    document.getElementById('admin-actions').style.display = 'block';
+  }catch(err){
+    console.error(err);
+    box.innerHTML = '<div class="error">حدث خطأ</div>';
+  }
+};
+
+function renderAdminUserCard(u){
+  const box = document.getElementById('admin-user-result');
+  const followersCount = (u.followers || []).length + (u.bonusFollowers || 0);
+  const badgesHtml = (u.badges || []).map(b => `<span title="${escapeHtml(b.label || '')}" style="font-size:20px;margin-left:4px;">${b.emoji}</span>`).join('') || '—';
+  box.innerHTML = `
+    <div class="user-card">
+      <h4>${escapeHtml(u.username || '')} ${u.verified ? '✔️' : ''} ${u.banned ? '<span style="color:#e74c3c;">(محظور)</span>' : ''}</h4>
+      <div class="uid">${u.id} — ${escapeHtml(u.email || '')}</div>
+      <div class="stats">
+        👁️ مشاهدات: <b>${u.views || 0}</b> &nbsp;|&nbsp;
+        ❤️ لايكات: <b>${u.likes || 0}</b> &nbsp;|&nbsp;
+        👥 متابعون: <b>${followersCount}</b><br>
+        🛡️ أوسمة: ${badgesHtml}
+      </div>
+    </div>
+  `;
+}
+
+async function refreshAdminTarget(){
+  if(!currentAdminTargetId) return;
+  const snap = await getDoc(doc(db, 'users', currentAdminTargetId));
+  if(snap.exists()) renderAdminUserCard({ id: snap.id, ...snap.data() });
+}
+
+function requireTarget(){
+  if(!currentAdminTargetId){ alert('ابحث عن مستخدم أولاً'); return false; }
+  return true;
+}
+
+window.adminAddLikes = async function(){
+  if(!requireTarget()) return;
+  const n = parseInt(document.getElementById('admin-likes-amount').value) || 0;
+  await updateDoc(doc(db, 'users', currentAdminTargetId), { likes: increment(n) });
+  await refreshAdminTarget();
+};
+
+window.adminAddViews = async function(){
+  if(!requireTarget()) return;
+  const n = parseInt(document.getElementById('admin-views-amount').value) || 0;
+  await updateDoc(doc(db, 'users', currentAdminTargetId), { views: increment(n) });
+  await refreshAdminTarget();
+};
+
+window.adminAddFollowers = async function(){
+  if(!requireTarget()) return;
+  const n = Math.abs(parseInt(document.getElementById('admin-followers-amount').value) || 0);
+  await updateDoc(doc(db, 'users', currentAdminTargetId), { bonusFollowers: increment(n) });
+  await refreshAdminTarget();
+};
+
+window.adminRemoveFollowers = async function(){
+  if(!requireTarget()) return;
+  const n = Math.abs(parseInt(document.getElementById('admin-followers-amount').value) || 0);
+  if(n <= 0) return;
+  // clamp so the *displayed* total (real followers + bonus) never goes below zero
+  const snap = await getDoc(doc(db, 'users', currentAdminTargetId));
+  const u = snap.exists() ? snap.data() : {};
+  const realFollowers = (u.followers || []).length;
+  const currentBonus = u.bonusFollowers || 0;
+  const currentTotal = realFollowers + currentBonus;
+  const newTotal = Math.max(0, currentTotal - n);
+  const newBonus = newTotal - realFollowers;
+  await updateDoc(doc(db, 'users', currentAdminTargetId), { bonusFollowers: newBonus });
+  await refreshAdminTarget();
+};
+
+window.adminGiveBadge = async function(){
+  if(!requireTarget()) return;
+  const idx = parseInt(document.getElementById('admin-badge-select').value);
+  const preset = BADGE_PRESETS[idx];
+  if(!preset) return;
+  await updateDoc(doc(db, 'users', currentAdminTargetId), {
+    badges: arrayUnion({ emoji: preset.emoji, label: preset.label, awardedAt: Date.now() })
+  });
+  await refreshAdminTarget();
+};
+
+window.adminToggleVerified = async function(){
+  if(!requireTarget()) return;
+  const snap = await getDoc(doc(db, 'users', currentAdminTargetId));
+  const cur = snap.exists() ? !!snap.data().verified : false;
+  await updateDoc(doc(db, 'users', currentAdminTargetId), { verified: !cur });
+  await refreshAdminTarget();
+};
+
+window.adminBanUser = async function(){
+  if(!requireTarget()) return;
+  const reason = document.getElementById('admin-ban-reason').value.trim();
+  await updateDoc(doc(db, 'users', currentAdminTargetId), { banned: true, banReason: reason || '' });
+  await refreshAdminTarget();
+  await loadBannedUsers();
+};
+
+window.adminUnbanUser = async function(){
+  if(!requireTarget()) return;
+  await updateDoc(doc(db, 'users', currentAdminTargetId), { banned: false, banReason: '' });
+  await refreshAdminTarget();
+  await loadBannedUsers();
+};
+
+window.adminDeleteUser = async function(){
+  if(!requireTarget()) return;
+  if(!confirm('متأكد إنك عايز تحذف هذا الحساب نهائيًا؟ الإجراء ده لا يمكن التراجع عنه')) return;
+  await deleteDoc(doc(db, 'users', currentAdminTargetId));
+  document.getElementById('admin-user-result').innerHTML = '<div class="empty">✅ تم حذف الحساب نهائيًا</div>';
+  document.getElementById('admin-actions').style.display = 'none';
+  currentAdminTargetId = null;
+  await loadBannedUsers();
+};
+
+window.adminResetPassword = async function(){
+  if(!requireTarget()) return;
+  const pw = document.getElementById('admin-new-password').value;
+  if(!pw || pw.length < 4){ alert('كلمة المرور قصيرة جدًا (٤ أحرف على الأقل)'); return; }
+  await updateDoc(doc(db, 'users', currentAdminTargetId), { password: pw });
+  document.getElementById('admin-new-password').value = '';
+  alert('تم تغيير كلمة المرور ✅');
+};
+
+async function loadBannedUsers(){
+  const box = document.getElementById('admin-banned-list');
+  box.innerHTML = '<div class="loading">جاري التحميل...</div>';
+  try{
+    const snap = await getDocs(query(collection(db, 'users'), where('banned', '==', true)));
+    if(snap.empty){ box.innerHTML = '<div class="empty">لا يوجد مستخدمون محظورون حاليًا</div>'; return; }
+    box.innerHTML = snap.docs.map(d => {
+      const u = d.data();
+      return `<div class="msg-card">
+        <b>${escapeHtml(u.username || '')}</b> (${d.id}) ${u.banReason ? '— ' + escapeHtml(u.banReason) : ''}
+        <br><button onclick="window.quickUnban('${d.id}')">✅ فك الحظر</button>
+      </div>`;
+    }).join('');
+  }catch(err){
+    console.error(err);
+    box.innerHTML = '<div class="error">حدث خطأ</div>';
+  }
+}
+
+window.quickUnban = async function(id){
+  await updateDoc(doc(db, 'users', id), { banned: false, banReason: '' });
+  await loadBannedUsers();
+  if(id === currentAdminTargetId) await refreshAdminTarget();
+};
+
+/* ============================================================
+   Create a custom account with a chosen ID
+   ============================================================ */
+window.adminCreateUser = async function(){
+  const box = document.getElementById('cu-result');
+  box.innerHTML = '<div class="loading">جاري الإنشاء...</div>';
+
+  const rawId = document.getElementById('cu-id').value.trim();
+  const username = document.getElementById('cu-username').value.trim();
+  const email = document.getElementById('cu-email').value.trim().toLowerCase();
+  const password = document.getElementById('cu-password').value;
+  const gender = document.getElementById('cu-gender').value;
+  const verified = document.getElementById('cu-verified').checked;
+  const badgeIdx = parseInt(document.getElementById('cu-badge-select').value);
+  const bonusFollowers = parseInt(document.getElementById('cu-bonus-followers').value) || 0;
+
+  if(!rawId || !username || !email || !password){
+    box.innerHTML = '<div class="error">من فضلك املأ الـ ID والاسم والبريد وكلمة المرور</div>';
+    return;
+  }
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if(!emailRegex.test(email)){
+    box.innerHTML = '<div class="error">البريد الإلكتروني غير صحيح</div>';
+    return;
+  }
+
+  let id = rawId.toUpperCase();
+  if(!id.startsWith('ID-')) id = 'ID-' + id;
+
+  try{
+    // 1) the ID itself must be free
+    const idSnap = await getDoc(doc(db, 'users', id));
+    if(idSnap.exists()){
+      box.innerHTML = `<div class="error">❌ الـ ID ده مأخوذ بالفعل (${id})، جرّب واحد تاني</div>`;
+      return;
+    }
+
+    // 2) the username must be free (exact match, covers every existing
+    //    account; usernameLower catches different-case duplicates too)
+    const usernameLower = username.toLowerCase();
+    const exactSnap = await getDocs(query(collection(db, 'users'), where('username', '==', username)));
+    const lowerSnap = await getDocs(query(collection(db, 'users'), where('usernameLower', '==', usernameLower)));
+    if(!exactSnap.empty || !lowerSnap.empty){
+      box.innerHTML = '<div class="error">❌ الاسم ده مأخوذ بالفعل، جرّب اسم تاني</div>';
+      return;
+    }
+
+    // 3) the email must be free (needed to log in with it)
+    const emailSnap = await getDocs(query(collection(db, 'users'), where('email', '==', email)));
+    if(!emailSnap.empty){
+      box.innerHTML = '<div class="error">❌ البريد الإلكتروني ده مستخدم بالفعل</div>';
+      return;
+    }
+
+    const preset = BADGE_PRESETS[badgeIdx];
+    const newUser = {
+      username, usernameLower, gender, email, password,
+      views: 0, likes: 0,
+      followers: [], following: [],
+      friendRequestsReceived: [], friendRequestsSent: [],
+      verified: !!verified,
+      bonusFollowers: bonusFollowers,
+      badges: preset ? [{ emoji: preset.emoji, label: preset.label, awardedAt: Date.now() }] : []
+    };
+    await setDoc(doc(db, 'users', id), newUser);
+
+    box.innerHTML = `<div class="empty">✅ اتعمل الحساب بنجاح — ${escapeHtml(username)} (${id})</div>`;
+    document.getElementById('cu-id').value = '';
+    document.getElementById('cu-username').value = '';
+    document.getElementById('cu-email').value = '';
+    document.getElementById('cu-verified').checked = false;
+    document.getElementById('cu-bonus-followers').value = '0';
+
+    // jump straight to the Users tab with this account loaded, ready for
+    // further tweaks (more badges, followers, etc.)
+    document.getElementById('admin-search-id').value = id;
+    window.showTab('users');
+    await window.adminSearchUser();
+  }catch(err){
+    console.error(err);
+    box.innerHTML = '<div class="error">حدث خطأ أثناء الإنشاء</div>';
+  }
+};
+
+/* ============================================================
+   Profanity reports (auto-flagged messages from the site)
+   ============================================================ */
+async function loadProfanityReports(){
+  const box = document.getElementById('admin-reports-list');
+  box.innerHTML = '<div class="loading">جاري التحميل...</div>';
+  try{
+    const q = query(collection(db, 'reports'), orderBy('createdAt', 'desc'), limit(100));
+    const snap = await getDocs(q);
+    if(snap.empty){ box.innerHTML = '<div class="empty">لا توجد بلاغات حاليًا</div>'; return; }
+    const SOURCE_LABEL = { room: '💬 غرفة دردشة', cinema: '🎬 سينما', dm: '✉️ رسالة خاصة' };
+    box.innerHTML = snap.docs.map(d => {
+      const r = d.data();
+      return `<div class="msg-card">
+        <div><b>${escapeHtml(r.senderName || '')}</b> (${escapeHtml(r.senderId || '')}) — ${SOURCE_LABEL[r.source] || r.source || ''} ${r.roomId ? '(' + escapeHtml(r.roomId) + ')' : ''}</div>
+        <div style="margin:6px 0; color:#e74c3c;">${escapeHtml(r.text || '')}</div>
+        <div class="hint">الكلمة/الكلمات اللي شغّلت البلاغ: ${escapeHtml((r.matchedWords || []).join('، '))}</div>
+        <button class="danger" onclick="window.quickBanFromReport('${d.id}','${(r.senderId||'').replace(/'/g,"")}')">⛔ افتح حساب المُرسل وحظره</button>
+        <button onclick="window.dismissReport('${d.id}')">🗑️ تجاهل البلاغ</button>
+      </div>`;
+    }).join('');
+  }catch(err){
+    console.error(err);
+    box.innerHTML = '<div class="error">حدث خطأ (تأكد إن فيه index على createdAt في مجموعة reports)</div>';
+  }
+}
+
+window.dismissReport = async function(reportId){
+  await deleteDoc(doc(db, 'reports', reportId));
+  await loadProfanityReports();
+};
+
+window.quickBanFromReport = async function(reportId, senderId){
+  if(!senderId) return;
+  document.getElementById('admin-search-id').value = senderId;
+  window.showTab('users');
+  await window.adminSearchUser();
+};
+
+/* ============================================================
+   VIP room security code - rotates every 5 minutes, shown here
+   so the site owner can hand it out through support when someone
+   needs to enter a chat room.
+   ============================================================ */
+const VIP_CODE_DURATION_MS = 60 * 60 * 1000;
+let vipCodeCache = null; // { code, expiresAt }
+let vipCodeTimerInterval = null;
+
+function generateVipCode(){
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let code = '';
+  for(let i = 0; i < 6; i++) code += chars[Math.floor(Math.random() * chars.length)];
+  return code;
+}
+
+async function ensureVipCode(){
+  const now = Date.now();
+  if(vipCodeCache && vipCodeCache.expiresAt > now) return vipCodeCache;
+
+  const ref = doc(db, 'config', 'vipRoomCode');
+  const snap = await getDoc(ref);
+  const data = snap.exists() ? snap.data() : null;
+
+  if(!data || !data.expiresAt || data.expiresAt <= now){
+    const code = generateVipCode();
+    const expiresAt = now + VIP_CODE_DURATION_MS;
+    await setDoc(ref, { code, expiresAt, generatedAt: serverTimestamp() });
+    vipCodeCache = { code, expiresAt };
+  } else {
+    vipCodeCache = { code: data.code, expiresAt: data.expiresAt };
+  }
+  return vipCodeCache;
+}
+
+async function tickVipCode(){
+  try{
+    const now = Date.now();
+    if(!vipCodeCache || vipCodeCache.expiresAt <= now){
+      await ensureVipCode();
+    }
+    const remaining = Math.max(0, Math.floor((vipCodeCache.expiresAt - Date.now()) / 1000));
+    const h = Math.floor(remaining / 3600);
+    const m = String(Math.floor((remaining % 3600) / 60)).padStart(2, '0');
+    const s = String(remaining % 60).padStart(2, '0');
+    document.getElementById('vip-code-display').textContent = vipCodeCache.code;
+    document.getElementById('vip-code-timer').textContent = `ينتهي خلال ${h}:${m}:${s}`;
+  }catch(err){ console.error(err); }
+}
+
+function startVipCodeWatcher(){
+  if(vipCodeTimerInterval) return;
+  tickVipCode();
+  vipCodeTimerInterval = setInterval(tickVipCode, 1000);
+}
+
+/* ============================================================
+   Support messages
+   ============================================================ */
+async function loadAdminSupportMessages(){
+  const box = document.getElementById('admin-support-list');
+  box.innerHTML = '<div class="loading">جاري التحميل...</div>';
+  try{
+    const snap = await getDocs(collection(db, 'supportMessages'));
+    let items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    items.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+    if(items.length === 0){ box.innerHTML = '<div class="empty">لا توجد رسائل دعم</div>'; return; }
+    box.innerHTML = items.map(m => `
+      <div class="msg-card">
+        <div><b>${escapeHtml(m.username || '')}</b> (${m.userId}) — ${m.status === 'resolved' ? '✅ تم الرد' : '⏳ مفتوحة'}</div>
+        <div style="margin:6px 0;">${escapeHtml(m.message)}</div>
+        ${m.adminReply ? `<div style="color:#2ecc71;">الرد السابق: ${escapeHtml(m.adminReply)}</div>` : ''}
+        <textarea id="reply-${m.id}" placeholder="اكتب الرد هنا..."></textarea>
+        <button onclick="window.adminReplySupport('${m.id}')">📨 إرسال الرد</button>
+        <div class="quick-actions">
+          <button onclick="window.adminQuickAddLikes('${m.userId}')">❤️ لايكات</button>
+          <button onclick="window.adminQuickAddViews('${m.userId}')">👁️ مشاهدات</button>
+          <button class="danger" onclick="window.adminQuickBan('${m.userId}')">⛔ حظر الحساب</button>
+          <button class="danger" onclick="window.adminQuickDelete('${m.userId}','${(m.username||'').replace(/'/g,"")}')">🗑️ حذف الحساب</button>
+        </div>
+      </div>
+    `).join('');
+  }catch(err){
+    console.error(err);
+    box.innerHTML = '<div class="error">حدث خطأ</div>';
+  }
+}
+
+window.adminQuickAddLikes = async function(userId){
+  if(!userId) return;
+  const raw = prompt('كام لايك تحب تضيفه؟', '10');
+  const n = parseInt(raw);
+  if(!n || n <= 0) return;
+  await updateDoc(doc(db, 'users', userId), { likes: increment(n) });
+  alert('تم إضافة اللايكات ✅');
+  if(userId === currentAdminTargetId) await refreshAdminTarget();
+};
+
+window.adminQuickAddViews = async function(userId){
+  if(!userId) return;
+  const raw = prompt('كام مشاهدة تحب تضيفها؟', '10');
+  const n = parseInt(raw);
+  if(!n || n <= 0) return;
+  await updateDoc(doc(db, 'users', userId), { views: increment(n) });
+  alert('تم إضافة المشاهدات ✅');
+  if(userId === currentAdminTargetId) await refreshAdminTarget();
+};
+
+window.adminQuickBan = async function(userId){
+  if(!userId) return;
+  if(!confirm('متأكد إنك عايز تحظر هذا الحساب؟')) return;
+  const reason = prompt('سبب الحظر (اختياري)') || '';
+  await updateDoc(doc(db, 'users', userId), { banned: true, banReason: reason });
+  alert('تم حظر الحساب ⛔');
+  if(userId === currentAdminTargetId) await refreshAdminTarget();
+  await loadBannedUsers();
+};
+
+window.adminQuickDelete = async function(userId, username){
+  if(!userId) return;
+  if(!confirm(`متأكد إنك عايز تحذف حساب ${username || userId} نهائيًا؟ الإجراء ده لا يمكن التراجع عنه`)) return;
+  await deleteDoc(doc(db, 'users', userId));
+  alert('تم حذف الحساب 🗑️');
+  if(userId === currentAdminTargetId){
+    document.getElementById('admin-actions').style.display = 'none';
+    currentAdminTargetId = null;
+  }
+  await loadBannedUsers();
+};
+
+/* ============================================================
+   Support broadcast - one message from support that shows up
+   on every user's screen at once (separate from normal 1-to-1
+   support replies below, and from the URL broadcast tab)
+   ============================================================ */
+window.sendSupportBroadcast = async function(){
+  const input = document.getElementById('support-broadcast-input');
+  const statusEl = document.getElementById('support-broadcast-status');
+  const message = input.value.trim();
+  if(!message){ alert('اكتب رسالة أولاً'); return; }
+
+  try{
+    await setDoc(doc(db, 'config', 'supportBroadcast'), {
+      message,
+      broadcastId: Date.now().toString() + '_' + Math.random().toString(36).slice(2),
+      sentAt: serverTimestamp()
+    });
+    input.value = '';
+    if(statusEl) statusEl.textContent = '✅ تم الإرسال لجميع المستخدمين';
+    setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 4000);
+  }catch(err){
+    console.error(err);
+    alert('حدث خطأ أثناء الإرسال');
+  }
+};
+
+window.adminReplySupport = async function(msgId){
+  const ta = document.getElementById('reply-' + msgId);
+  const text = ta.value.trim();
+  if(!text) return;
+  await updateDoc(doc(db, 'supportMessages', msgId), {
+    adminReply: text, status: 'resolved', repliedAt: serverTimestamp(), seenByUser: false
+  });
+  await loadAdminSupportMessages();
+};
+
+/* ============================================================
+   Broadcast
+   ============================================================ */
+async function loadCurrentBroadcast(){
+  const snap = await getDoc(doc(db, 'config', 'app'));
+  const data = snap.exists() ? snap.data() : {};
+  document.getElementById('broadcast-url-input').value = data.broadcastUrl || '';
+  document.getElementById('broadcast-msg-input').value = data.broadcastMessage || '';
+}
+
+window.sendBroadcast = async function(){
+  const url = document.getElementById('broadcast-url-input').value.trim();
+  const msg = document.getElementById('broadcast-msg-input').value.trim();
+  if(!url){ alert('أدخل الرابط الجديد'); return; }
+  await setDoc(doc(db, 'config', 'app'), {
+    broadcastUrl: url, broadcastMessage: msg, updatedAt: serverTimestamp()
+  }, { merge: true });
+  alert('تم الإرسال لجميع المستخدمين ✅');
+};
+
+window.clearBroadcast = async function(){
+  await setDoc(doc(db, 'config', 'app'), { broadcastUrl: '', broadcastMessage: '' }, { merge: true });
+  await loadCurrentBroadcast();
+  alert('تم إلغاء التحديث');
+};
+</script>
+</body>
+</html>
